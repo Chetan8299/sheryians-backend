@@ -1,10 +1,9 @@
-const crypto = require("crypto");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const userModel = require("../models/user.model");
 
-async function registerController (req, res) {
+async function registerController(req, res) {
     const { email, username, password, bio, profileImage } = req.body;
-    console.log("hi")
 
     // const isUserExistByEmail = await userModel.findOne({ email });
 
@@ -35,7 +34,7 @@ async function registerController (req, res) {
         })
     }
 
-    const hash = crypto.createHash("sha256").update(password).digest("hex");
+    const hash = await bcrypt.hash(password, 10);
 
     const user = await userModel.create({
         email,
@@ -64,7 +63,7 @@ async function registerController (req, res) {
     })
 }
 
-async function loginController (req, res) {
+async function loginController(req, res) {
     const { username, email, password } = req.body;
 
     const user = await userModel.findOne({
@@ -80,9 +79,7 @@ async function loginController (req, res) {
         })
     }
 
-    const hash = crypto.createHash("sha256").update(password).digest("hex");
-
-    const isPasswordValid = user.password == hash;
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
         return res.status(400).json({
@@ -91,6 +88,8 @@ async function loginController (req, res) {
     }
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
+
+    res.cookie("token", token);
 
     res.status(200).json({
         message: "Login successfully",
